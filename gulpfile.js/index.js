@@ -5,7 +5,7 @@
 
 const // node
 	{env, chdir} = require('node:process'),
-	{dirname, basename} = require('node:path');
+	{dirname, basename, relative} = require('node:path');
 
 const prod = env.NODE_ENV == 'production';
 
