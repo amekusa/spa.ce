@@ -153,12 +153,21 @@ const T = {
 		let src = src_html;
 		return $.src(src)
 			.pipe(io.modifyStream((data, enc) => {
-				if (prod) {
-					let js = basename(dist_js);
-					let css = basename(dist_css);
-					data = data.replaceAll(js, io.ext(js, '.min.js'));
-					data = data.replaceAll(css, io.ext(css, '.min.css'));
-				}
+				// interpolate {{ variable }}
+				data = data.replaceAll(/{{\s*(\w+)\s*}}/g, (_, m1) => {
+					let p = paths[m1];
+					if (!p) return '';
+					let r = '/' + relative(dir.dist_html, p);
+					if (!prod) return r;
+					let ext = io.ext(r);
+					switch (ext) {
+					case '.js':
+					case '.css':
+						r = io.ext(r, '.min' + ext);
+						break;
+					}
+					return r;
+				});
 				return data;
 			}))
 			.pipe($.dest(dst));
