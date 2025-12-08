@@ -145,7 +145,7 @@ const T = {
 	},
 
 	html_clean() {
-		return io.rm(dir.dist_html);
+		return io.clean(dir.dist_html, '*.html', 1);
 	},
 
 	html_build() {
