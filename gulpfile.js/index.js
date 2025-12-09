@@ -3,30 +3,27 @@
  * @author Satoshi Soma (amekusa.com)
  */
 
-const // node
-	{env, chdir} = require('node:process'),
-	{dirname, basename, relative} = require('node:path');
-
+// node
+const {dirname, basename, relative} = require('node:path');
+const {env, chdir} = require('node:process');
 const prod = env.NODE_ENV == 'production';
 
-const // gulp
-	$ = require('gulp'),
-	$rename = require('gulp-rename'),
-	$S = $.series,
-	$P = $.parallel;
+// gulp
+const $ = require('gulp');
+const $S = $.series;
+const $P = $.parallel;
 
-const // rollup
-	{rollup} = require('rollup');
+// gulp plugins
+const $rename = require('gulp-rename');
 
-const // browser-sync
-	bs = require('browser-sync').create();
+// misc.
+const {rollup} = require('rollup');
+const bs = require('browser-sync').create();
+const {io, sh} = require('@amekusa/nodeutil');
+const {minifyJS, minifyCSS} = require('./minify.js');
 
-const // misc
-	{io, sh} = require('@amekusa/nodeutil'),
-	{minifyJS, minifyCSS} = require('./minify.js');
-
-const // shortcuts
-	{log, debug, warn, error} = console;
+// shortcuts
+const {log, debug, warn, error} = console;
 
 // project root
 const root = dirname(__dirname); chdir(root);
