@@ -5,7 +5,7 @@
  *   rollup -c
  */
 
-const {dirname} = require('node:path');
+const {join, dirname} = require('node:path');
 const {env} = require('node:process');
 const prod = env.NODE_ENV == 'production';
 
@@ -15,23 +15,33 @@ const replace = require('@rollup/plugin-replace');
 const strip = require('@rollup/plugin-strip');
 const vue = require('rollup-plugin-vue');
 
-const {name, paths: {dist_js, src_js}} = require('./build.json');
-const dir = {src_js: dirname(src_js)};
+const {
+	name,
+	paths: {
+		dist,
+		dist_js,
+		src,
+		src_js
+	}
+} = require('./build.json');
+
+const input = join(src, src_js);
+const input_dir = dirname(input);
 
 const M = {
-	input: src_js,
+	input,
 	output: {
 		name,
-		file: dist_js,
+		file: join(dist, dist_js),
 		format: 'iife',
 		indent: !prod,
 		sourcemap: !prod,
 		compact: prod,
-},
+	},
 	treeshake: prod,
 	watch: {
 		include: [
-			`${dir.src_js}/**`,
+			`${input_dir}/**/*`,
 			'package.json',
 		],
 	},
@@ -42,11 +52,11 @@ const M = {
 		replace({
 			preventAssignment: true,
 			values: {
+				// Fix "process is not defined" error in browser
 				'process.env.NODE_ENV': prod ? '"production"' : '"development"',
-				  // NOTE: Necessary to fix "process is not defined" error in browser.
 
 				// Vue.js compile-time flags
-				// see: https://vuejs.org/api/compile-time-flags.html
+				// See: https://vuejs.org/api/compile-time-flags.html
 				'__VUE_OPTIONS_API__': 'true',
 				'__VUE_PROD_DEVTOOLS__': 'false',
 				'__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
@@ -59,7 +69,7 @@ const M = {
 if (prod) {
 	M.plugins.push(
 		strip({
-			include: `${dir.src_js}/**/*.js`,
+			include: `${input_dir}/**/*.js`,
 			functions: [
 				'console.log',
 				'console.debug',

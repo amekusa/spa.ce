@@ -1,11 +1,11 @@
 {
   "name": "my_app",
   "paths": {
-    "dist_html": "app/index.html",
-    "dist_css":  "app/css/style.css",
-    "dist_js":   "app/js/main.js",
-    "src_html":  "src/index.html",
-    "src_css":   "src/css/style.less",
-    "src_js":    "src/js/main.js"
+    "dist":     "app",
+    "dist_css": "css/style.css",
+    "dist_js":  "js/main.js",
+    "src":      "src",
+    "src_css":  "css/style.less",
+    "src_js":   "js/main.js"
   }
 }
