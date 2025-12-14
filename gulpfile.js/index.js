@@ -91,10 +91,10 @@ const T = {
 		let conf = C.rollup;
 		if (conf) {
 			if (typeof conf.cache == 'object') log(`Rollup: Cache is used.`);
-			else conf.cache = bs.active;
+			else conf.cache = dev;
 		} else {
 			conf = require(`${root}/rollup.config.js`);
-			conf.cache = bs.active;
+			conf.cache = dev;
 		}
 		return rollup(conf).then(bundle => {
 			if (bundle.cache) {
