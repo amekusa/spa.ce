@@ -8,6 +8,7 @@
 const {join, dirname} = require('node:path');
 const {env} = require('node:process');
 const prod = env.NODE_ENV == 'production';
+const dev = !prod;
 
 // plugins
 const nodeResolve = require('@rollup/plugin-node-resolve');
@@ -34,8 +35,8 @@ const M = {
 		name,
 		file: join(dist, dist_js),
 		format: 'iife',
-		indent: !prod,
-		sourcemap: !prod,
+		indent: dev,
+		sourcemap: dev,
 		compact: prod,
 	},
 	treeshake: prod,

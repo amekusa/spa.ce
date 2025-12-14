@@ -4,9 +4,10 @@
  */
 
 // node
-const {dirname, basename, relative} = require('node:path');
-const {env, chdir} = require('node:process');
+const {join, dirname, basename, relative} = require('node:path');
+const {env, chdir, exit} = require('node:process');
 const prod = env.NODE_ENV == 'production';
+const dev = !prod;
 
 // gulp
 const $ = require('gulp');
@@ -20,6 +21,7 @@ const $rename = require('gulp-rename');
 const {rollup} = require('rollup');
 const bs = require('browser-sync').create();
 const {io, sh} = require('@amekusa/nodeutil');
+const {subst} = require('./util.js');
 const {minifyJS, minifyCSS} = require('./minify.js');
 
 // shortcuts
@@ -28,18 +30,21 @@ const {log, debug, warn, error} = console;
 // project root
 const root = dirname(__dirname); chdir(root);
 
-// paths
-const {paths} = require(`${root}/build.json`);
-const dir = {};
-for (let i in paths) {
-	paths[i] = `${root}/${paths[i]}`;
-	dir[i] = dirname(paths[i]);
+// config
+const config = require(`${root}/build.json`);
+const paths = {};
+const dirs = {};
+for (let k in config.paths) {
+	let v = config.paths[k];
+	let dir = '';
+	if      (k.startsWith('dist_')) dir = config.paths.dist;
+	else if (k.startsWith('src_'))  dir = config.paths.src;
+	paths[k] = join(root, dir, v);
+	dirs[k] = dirname(paths[k]);
 }
 const {
-	dist_html,
 	dist_css,
 	dist_js,
-	src_html,
 	src_css,
 	src_js,
 } = paths;
@@ -49,7 +54,7 @@ const C = {
 	rollup: null, // rollup config
 };
 
-// Tasks
+// tasks
 const T = {
 
 	default(done) {
@@ -58,8 +63,26 @@ const T = {
 		done();
 	},
 
-	js_clean() {
-		return io.rm(dir.dist_js);
+	clean() {
+		return io.rm(paths.dist);
+	},
+
+	run(done) {
+		return bs.active ? done() : bs.init({
+			open: false,
+			server: {
+				baseDir: paths.dist,
+				index: 'index.html',
+			},
+			injectNotification: 'overlay', // console | overlay
+			injectFileTypes: ['css', 'png', 'jpg', 'jpeg', 'svg', 'gif', 'webp', 'map'],
+				// NOTE: Add 'js' to enable JS injection
+			ghostMode: {
+				clicks: false,
+				forms: false,
+				scroll: false
+			},
+		}, done);
 	},
 
 	js_build() {
@@ -68,7 +91,7 @@ const T = {
 		let conf = C.rollup;
 		if (conf) {
 			if (typeof conf.cache == 'object') log(`Rollup: Cache is used.`);
-
+			else conf.cache = bs.active;
 		} else {
 			conf = require(`${root}/rollup.config.js`);
 			conf.cache = bs.active;
@@ -84,14 +107,17 @@ const T = {
 		}).catch(err => {
 			bs.notify(`<b style="color:hotpink">JS Build Failure!</b>`, 15000);
 			throw err;
+
+		}).then(() => {
+			bs.reload();
 		});
 	},
 
 	js_minify() {
-		let dst = dir.dist_js;
+		let dst = dirs.dist_js;
 		let src = [
-			`${dir.dist_js}/**/*.js`,
-			`!${dir.dist_js}/**/*.min.js`,
+			`${dirs.dist_js}/**/*.js`,
+			`!${dirs.dist_js}/**/*.min.js`,
 		];
 		let opts = {};
 		return $.src(src)
@@ -105,10 +131,6 @@ const T = {
 			.pipe($.dest(dst));
 	},
 
-	css_clean() {
-		return io.rm(dir.dist_css);
-	},
-
 	css_build() {
 		bs.notify(`Building CSS...`);
 		let dst = dist_css;
@@ -117,14 +139,16 @@ const T = {
 		return sh.exec(`lessc ${opts} '${src}' '${dst}'`).catch(err => {
 			bs.notify(`<b style="color:hotpink">CSS Build Failure!</b>`, 15000);
 			throw err;
+		}).then(() => {
+			bs.reload('*.css');
 		});
 	},
 
 	css_minify() {
-		let dst = dir.dist_css;
+		let dst = dirs.dist_css;
 		let src = [
-			`${dir.dist_css}/**/*.css`,
-			`!${dir.dist_css}/**/*.min.css`,
+			`${dirs.dist_css}/**/*.css`,
+			`!${dirs.dist_css}/**/*.min.css`,
 		];
 		let opts = {
 			inline: ['all'],
@@ -141,53 +165,79 @@ const T = {
 			.pipe($.dest(dst));
 	},
 
-	html_clean() {
-		return io.clean(dir.dist_html, '*.html', 1);
-	},
-
 	html_build() {
-		let dst = dir.dist_html;
-		let src = src_html;
+		let dst = paths.dist;
+		let src = `${paths.src}/index.html`;
 		return $.src(src)
-			.pipe(io.modifyStream((data, enc) => {
-				// interpolate {{ variable }}
-				data = data.replaceAll(/{{\s*(\w+)\s*}}/g, (_, m1) => {
-					let p = paths[m1];
-					if (!p) return '';
-					let r = '/' + relative(dir.dist_html, p);
-					if (!prod) return r;
-					let ext = io.ext(r);
-					switch (ext) {
-					case '.js':
-					case '.css':
-						r = io.ext(r, '.min' + ext);
-						break;
+			.pipe(io.modifyStream((content, enc) => {
+				return subst(content, config, (v, k) => {
+					if (prod) {
+						switch (k) {
+						case 'paths.dist_js':
+							v = io.ext(v, '.min.js');
+							break;
+						case 'paths.dist_css':
+							v = io.ext(v, '.min.css');
+							break;
+						}
 					}
-					return r;
+					return v;
 				});
-				return data;
 			}))
 			.pipe($.dest(dst));
 	},
 
+	watch() {
+
+		// auto-build js
+		$.watch([
+			`${dirs.src_js}/**/*.js`,
+		], T.js_build);
+
+		// auto-build css
+		$.watch([
+			`${dirs.src_css}/**/*.{less,css}`,
+		], T.css_build);
+
+		// auto-build html
+		$.watch([
+			`${paths.src}/index.html`,
+		], T.html_build);
+	},
 }
 
-/**
- * Composite Tasks
- */
-T.js = $S(
-	T.js_clean,
+const noop = done => {done()};
+const $prod = prod
+	? task => task
+	: ()   => noop;
+
+T.js = prod ? $S(
 	T.js_build,
 	T.js_minify
-);
-T.css = $S(
-	T.css_clean,
+) : T.js_build;
+
+T.css = prod ? $S(
 	T.css_build,
 	T.css_minify
+) : T.css_build;
+
+T.html = T.html_build;
+
+T.build = $P(
+	T.js,
+	T.css,
+	T.html
 );
-T.html = $S(
-	T.html_clean,
-	T.html_build
+
+T.dist = $S(
+	$prod(T.clean),
+	T.build,
+	T.run
+);
+
+T.dev = $S(
+	T.dist,
+	T.watch
 );
 
 module.exports = T;
