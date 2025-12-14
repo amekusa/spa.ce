@@ -1,5 +1,6 @@
 {
   "name": "my_app",
+  "title": "My App",
   "lang": "en",
   "paths": {
     "dist":     "app",
