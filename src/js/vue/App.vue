@@ -4,5 +4,18 @@ let count = ref(0);
 </script>
 
 <template>
-	<button @click="count++">You clicked me {{ count }} times.</button>
+	<h1>My App</h1>
+	<div>
+		<button @click="count++">You clicked me {{ count }} times.</button>
+	</div>
+	<p><strong>Current route path:</strong> {{ $route.fullPath }}</p>
+	<nav>
+		<ul>
+			<li><RouterLink to="/">Home</RouterLink></li>
+			<li><RouterLink to="/about">About</RouterLink></li>
+		</ul>
+	</nav>
+	<main>
+		<RouterView />
+	</main>
 </template>
