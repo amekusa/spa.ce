@@ -1,17 +1,14 @@
 # DEVELOPMENT
 
-## Scaffold
-```sh
-npm init spade my_project
-```
-
 ## Install dependencies
 ```sh
 npm install
 ```
 
-## Build
+## Configure
+Edit `build.json`.
 
+## Build
 ```sh
 # Development
 npm run dev
